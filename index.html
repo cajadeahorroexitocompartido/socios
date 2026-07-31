@@ -459,7 +459,7 @@ const ICON = {
 /* ============================================================
    CONEXIÓN AL BACKEND (sistema de Ahorros y Retiros)
    ============================================================ */
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby4b-VtgoJWJxW2nfY7JWahCc2Kx3vFF5N8c16GwkLmGBaw0xOshO6-U1BaWJtPwvdM/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyzZ4yWlPJJaH6c7XiRs8uY0QcjV1uMp7cECTivOgM9QbCovvWzu16ZVAqcnv4mykEM/exec";
 
 async function api(payload){
   const res = await fetch(APPS_SCRIPT_URL, {
@@ -653,8 +653,7 @@ function renderTodo(){
         <div class="amort-wrap" id="amort-${idx}">
           <table><thead><tr><th>#</th><th>Vence</th><th>Cuota</th><th>Capital</th><th>Interés</th><th>Saldo</th><th>Estado</th></tr></thead>
           <tbody>${(cr.cuotas||[]).map(q=>{
-            const creditoCancelado = cr.Estado === 'cancelado';
-            const estadoMostrar = creditoCancelado ? 'cancelado' : (q.Estado === 'pagado' ? 'pagado' : 'pendiente');
+            const estadoMostrar = q.EstadoCalculado || (q.Estado === 'pagado' ? 'pagado' : 'pendiente');
             const tagClass = estadoMostrar === 'pendiente' ? 'warn' : 'ok';
             return `<tr><td>${q.NumeroCuota}</td><td>${q.FechaVence}</td><td>${money(q.CuotaTotal)}</td><td>${money(q.Capital)}</td><td>${money(q.Interes)}</td><td>${money(q.SaldoRestante)}</td>
             <td><span class="tag ${tagClass}">${estadoMostrar}</span></td></tr>`;
