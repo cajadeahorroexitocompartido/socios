@@ -697,7 +697,7 @@ function renderTodo(){
       <div class="poliza-card">
         <div class="credito-head">
           <div><div class="code">Póliza de inversión</div><div class="sub">Vence el ${p.FechaVencimiento}</div></div>
-          <span class="tag ${p.Estado==='activa'?'ok':'warn'}">${p.Estado}</span>
+          <span class="tag ${p.Estado==='activa'||p.Estado==='finalizada'?'ok':'warn'}">${p.Estado}</span>
         </div>
         <div class="cards" style="margin-bottom:0">
           <div class="metric"><div class="top"><div class="ic gold">${ICON.wallet}</div></div><div class="label">Monto invertido</div><div class="value">${money(p.Monto)}</div></div>
