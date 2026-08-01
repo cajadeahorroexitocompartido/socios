@@ -461,15 +461,27 @@ const ICON = {
    ============================================================ */
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzAJ_Xdr3n6ExvZ3Ne4JM7nBJTEeyY8uC4IJP3FKkuDZQbZZHh49JqVo89Ve0EmF4a5/exec";
 
-async function api(payload){
-  const res = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: {'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify(payload)
-  });
-  const json = await res.json();
-  if(!json.ok) throw new Error(json.error || 'Error de conexión');
-  return json.data;
+async function api(payload, timeoutMs = 28000){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try{
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    const json = await res.json();
+    if(!json.ok) throw new Error(json.error || 'Error de conexión');
+    return json.data;
+  }catch(err){
+    clearTimeout(timer);
+    if (err.name === 'AbortError') {
+      throw new Error('La consulta está tardando demasiado. Verifica tu conexión e inténtalo de nuevo.');
+    }
+    throw err;
+  }
 }
 function money(n){ return '$' + (parseFloat(n)||0).toLocaleString('es-EC',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
@@ -500,6 +512,7 @@ async function hacerLogin(){
   btn.disabled = true;
   btnText.innerHTML = '<span class="spinner"></span> Ingresando…';
 
+  let avisosLentos = [];
   try{
     const r = await api({accion:'login_socio', cedula, pass});
     if(!r.ok){
@@ -510,9 +523,15 @@ async function hacerLogin(){
     CEDULA_SESION = cedula; NOMBRE_SESION = r.nombre; TIPO_SESION = r.tipoSocio;
 
     // Pantalla "Bienvenido" mientras se carga el resto de la información
+    const wlSub = document.querySelector('#welcomeLoading .wl-sub');
     document.getElementById('wlSaludo').textContent = 'Bienvenido, ' + (NOMBRE_SESION.split(' ')[0] || NOMBRE_SESION);
     document.getElementById('loginView').classList.remove('show');
     document.getElementById('welcomeLoading').classList.add('show');
+
+    // Mensajes que tranquilizan si la carga tarda más de lo normal
+    const dotsHtml = '<span class="dots-loading"><span></span><span></span><span></span></span>';
+    avisosLentos.push(setTimeout(() => { wlSub.innerHTML = 'Esto está tomando un poco más de lo normal' + dotsHtml; }, 6000));
+    avisosLentos.push(setTimeout(() => { wlSub.innerHTML = 'Ya casi… gracias por tu paciencia' + dotsHtml; }, 14000));
 
     await cargarResumen();
     construirNav();
@@ -523,8 +542,9 @@ async function hacerLogin(){
   }catch(e){
     document.getElementById('welcomeLoading').classList.remove('show');
     document.getElementById('loginView').classList.add('show');
-    msg.textContent = 'Error de conexión. Intenta nuevamente.';
+    msg.textContent = e.message || 'Error de conexión. Intenta nuevamente.';
   }
+  avisosLentos.forEach(t => clearTimeout(t));
   btn.disabled = false; btnText.textContent = 'Ingresar a mi cuenta';
 }
 
@@ -575,15 +595,20 @@ function irSeccion(sec){
 }
 
 async function refrescarDatos(){
-  await cargarResumen();
-  renderTodo();
+  const btn = document.querySelector('.icon-btn');
+  if (btn) btn.style.opacity = '.5';
+  try {
+    await cargarResumen(true);
+  } finally {
+    if (btn) btn.style.opacity = '1';
+  }
 }
 
 /* ============================================================
    CARGA Y RENDER DE DATOS
    ============================================================ */
-async function cargarResumen(){
-  RESUMEN = await api({accion:'resumen_cedula', cedula: CEDULA_SESION});
+async function cargarResumen(forzar){
+  RESUMEN = await api({accion:'resumen_cedula', cedula: CEDULA_SESION, forzar: !!forzar});
   renderTodo();
 }
 
